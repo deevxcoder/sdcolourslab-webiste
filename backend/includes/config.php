@@ -4,7 +4,7 @@
  * Detects if running on localhost or a live server.
  */
 
-$isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', 'localhost:8000', 'localhost:8001', '127.0.0.1', 'sdcolorslab.test']) || php_sapi_name() === 'cli';
+$isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', 'localhost:8000', 'localhost:8001', '127.0.0.1', '127.0.0.1:8000', '[::1]', '[::1]:8000', 'sdcolorslab.test']) || php_sapi_name() === 'cli';
 
 if ($isLocal) {
     // LOCAL SETTINGS (Laragon / XAMPP)

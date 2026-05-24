@@ -15,7 +15,7 @@ function getDB() {
     $dsn = getenv('DATABASE_URL');
     
     // Check if we are running locally
-    $isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', 'localhost:8000', 'localhost:8001', '127.0.0.1', 'sdcolorslab.test']) || php_sapi_name() === 'cli';
+    $isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', 'localhost:8000', 'localhost:8001', '127.0.0.1', '127.0.0.1:8000', '[::1]', '[::1]:8000', 'sdcolorslab.test']) || php_sapi_name() === 'cli';
 
     // 2. Use config.php settings if loaded
     if (!$dsn && $configLoaded && defined('DB_NAME')) {

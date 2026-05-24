@@ -37,8 +37,8 @@ export default function Register() {
   const [success, setSuccess] = useState("");
 
   const getBackendUrl = (path: string) => {
-    const isDev = typeof window !== "undefined" && window.location.hostname === "localhost";
-    const base = isDev ? "http://localhost:8000" : "https://backend.sdcolourslab.in";
+    const isDev = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    const base = isDev ? "http://127.0.0.1:8000" : "https://backend.sdcolourslab.in";
     return `${base}${path}`;
   };
 

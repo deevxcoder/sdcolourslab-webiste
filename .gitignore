@@ -50,6 +50,7 @@ backend/photographer/debug_*.php
 # build/deployment archives
 backend.zip
 frontend.zip
+frontend_deploy.zip
 backend/dev.sqlite
 
 
