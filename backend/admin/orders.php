@@ -1,0 +1,280 @@
+<?php
+$pageTitle = 'Manage Orders – Admin';
+require_once '../includes/auth.php';
+requireAdmin();
+require_once '../includes/db.php';
+
+$db = getDB();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order'])) {
+    $orderId = (int)$_POST['order_id'];
+    $status = $_POST['status'];
+    $adminNotes = trim($_POST['admin_notes'] ?? '');
+    $allowed = ['pending','processing','shipped','delivered','cancelled'];
+    if (in_array($status, $allowed)) {
+        $stmt = $db->prepare("UPDATE orders SET status=?, admin_notes=?, updated_at=NOW() WHERE id=?");
+        $stmt->execute([$status, $adminNotes, $orderId]);
+    }
+    header("Location: /admin/orders.php?id=$orderId&updated=1");
+    exit;
+}
+
+$viewId = isset($_GET['id']) ? (int)$_GET['id'] : null;
+$statusFilter = $_GET['status'] ?? 'all';
+$order = null;
+$items = [];
+
+if ($viewId) {
+    $stmt = $db->prepare("SELECT o.*, u.name as photographer_name, u.email as photographer_email, u.phone as photographer_phone, u.studio_name FROM orders o JOIN users u ON o.photographer_id=u.id WHERE o.id=?");
+    $stmt->execute([$viewId]);
+    $order = $stmt->fetch();
+    if ($order) {
+        $iStmt = $db->prepare("SELECT * FROM order_items WHERE order_id=?");
+        $iStmt->execute([$viewId]);
+        $items = $iStmt->fetchAll();
+    }
+}
+
+$where = $statusFilter !== 'all' ? "WHERE o.status=?" : "WHERE 1=1";
+$params = $statusFilter !== 'all' ? [$statusFilter] : [];
+$stmt = $db->prepare("SELECT o.*, u.name as photographer_name, COUNT(oi.id) as item_count FROM orders o JOIN users u ON o.photographer_id=u.id LEFT JOIN order_items oi ON o.id=oi.order_id $where GROUP BY o.id, u.name ORDER BY o.created_at DESC");
+$stmt->execute($params);
+$orders = $stmt->fetchAll();
+
+require_once '../includes/admin_header.php';
+
+// Helper status classes
+$statusClasses = [
+  'pending' => 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+  'processing' => 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+  'shipped' => 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
+  'delivered' => 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+  'cancelled' => 'bg-red-500/10 text-red-400 border border-red-500/20',
+];
+?>
+
+<div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  <div>
+    <h1 class="text-3xl font-extrabold text-white tracking-tight"><?= $order ? 'Order Details' : 'Manage Orders' ?></h1>
+    <p class="text-zinc-400 text-sm mt-1">
+      <?= $order ? 'Reviewing specific photobook printing order information.' : 'View, track, and update incoming client printing orders.' ?>
+    </p>
+  </div>
+  <div>
+    <a href="/admin/index.php" class="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-bold">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+      </svg>
+      Back to Dashboard
+    </a>
+  </div>
+</div>
+
+<?php if ($order): ?>
+  <!-- View Single Order Details -->
+  <?php if (isset($_GET['updated'])): ?>
+    <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl p-4 text-sm font-semibold mb-6 flex items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      </svg>
+      Order updated successfully.
+    </div>
+  <?php endif; ?>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <!-- Main Order Details Card -->
+    <div class="bg-secondary/40 border border-white/5 rounded-2xl overflow-hidden shadow-xl lg:col-span-2">
+      <!-- Order Detail Head -->
+      <div class="bg-white/5 px-6 py-5 border-b border-white/5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+        <div>
+          <span class="text-xs text-zinc-500 font-semibold uppercase tracking-wider block">Order ID</span>
+          <h2 class="text-lg font-bold text-white">#<?= $order['id'] ?> &mdash; <span class="text-zinc-400 text-sm font-normal"><?= date('d M Y, h:i A', strtotime($order['created_at'])) ?></span></h2>
+        </div>
+        <div>
+          <span class="inline-flex px-3 py-1.5 rounded-full text-xs font-semibold <?= $statusClasses[$order['status']] ?? 'bg-zinc-500/10 text-zinc-400' ?>">
+            Status: <?= ucfirst($order['status']) ?>
+          </span>
+        </div>
+      </div>
+      
+      <!-- Items List -->
+      <div class="divide-y divide-white/5">
+        <?php foreach ($items as $item): ?>
+          <div class="px-6 py-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:bg-white/[0.01] transition-colors">
+            <div>
+              <h3 class="font-bold text-white text-base">
+                <?= htmlspecialchars($item['product_name']) ?>
+                <?php if ($item['size']): ?>
+                  <span class="text-primary text-xs font-medium border border-primary/20 bg-primary/5 rounded px-2 py-0.5 ml-2 inline-block"><?= htmlspecialchars($item['size']) ?></span>
+                <?php endif; ?>
+              </h3>
+              
+              <?php if ($item['notes']): ?>
+                <div class="mt-2 text-xs text-zinc-400 bg-white/5 border border-white/5 rounded-lg p-2.5 max-w-lg">
+                  <span class="text-zinc-500 font-bold uppercase block text-[10px] tracking-wider mb-0.5">Special Layout Note</span>
+                  <?= htmlspecialchars($item['notes']) ?>
+                </div>
+              <?php endif; ?>
+              
+              <div class="mt-2.5 text-xs text-zinc-500 font-medium">
+                Quantity: <span class="text-zinc-300 font-semibold"><?= $item['quantity'] ?></span> &times; ₹<?= number_format($item['unit_price']) ?>
+              </div>
+            </div>
+            <div class="text-right text-base font-extrabold text-white sm:self-start">
+              ₹<?= number_format($item['unit_price'] * $item['quantity']) ?>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+
+      <!-- Photographer notes -->
+      <?php if ($order['notes']): ?>
+        <div class="bg-white/5 border-t border-white/5 p-6">
+          <h4 class="text-xs text-zinc-500 font-semibold uppercase tracking-wider mb-2">Photographer Order Level Note</h4>
+          <p class="text-sm text-zinc-300 bg-white/5 border border-white/5 rounded-xl p-4 italic">
+            "<?= htmlspecialchars($order['notes']) ?>"
+          </p>
+        </div>
+      <?php endif; ?>
+    </div>
+
+    <!-- Info Sidebar Card -->
+    <div class="space-y-6">
+      <!-- Photographer Details Card -->
+      <div class="bg-secondary/40 border border-white/5 rounded-2xl p-6 shadow-xl">
+        <h3 class="text-xs text-zinc-500 font-semibold uppercase tracking-wider border-b border-white/5 pb-3 mb-4">Photographer Info</h3>
+        <div class="space-y-4">
+          <div>
+            <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Full Name</span>
+            <span class="text-sm font-bold text-white block"><?= htmlspecialchars($order['photographer_name']) ?></span>
+          </div>
+          <?php if ($order['studio_name']): ?>
+            <div>
+              <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Studio Name</span>
+              <span class="text-sm font-bold text-primary block"><?= htmlspecialchars($order['studio_name']) ?></span>
+            </div>
+          <?php endif; ?>
+          <div>
+            <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Email Address</span>
+            <a href="mailto:<?= htmlspecialchars($order['photographer_email']) ?>" class="text-sm text-zinc-300 hover:text-primary transition-colors block"><?= htmlspecialchars($order['photographer_email']) ?></a>
+          </div>
+          <?php if ($order['photographer_phone']): ?>
+            <div>
+              <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Phone Contact</span>
+              <a href="tel:<?= htmlspecialchars($order['photographer_phone']) ?>" class="text-sm text-zinc-300 hover:text-primary transition-colors block"><?= htmlspecialchars($order['photographer_phone']) ?></a>
+            </div>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- Financial Card -->
+      <div class="bg-secondary/40 border border-white/5 rounded-2xl p-6 shadow-xl">
+        <h3 class="text-xs text-zinc-500 font-semibold uppercase tracking-wider border-b border-white/5 pb-3 mb-4">Pricing Total</h3>
+        <div class="text-center py-4">
+          <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block mb-1">Grand Net Price</span>
+          <span class="text-3xl font-black text-primary">₹<?= number_format($order['total']) ?></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Updates Actions Card -->
+  <div class="bg-secondary/40 border border-white/5 rounded-2xl p-6 sm:p-8 shadow-xl mb-6">
+    <h2 class="text-base font-bold text-white border-b border-white/5 pb-3 mb-6">Update Order Dispatch State</h2>
+    <form method="POST">
+      <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">Order Status</label>
+          <select name="status" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-200 text-sm">
+            <?php foreach (['pending','processing','shipped','delivered','cancelled'] as $s): ?>
+              <option value="<?= $s ?>" <?= $order['status']===$s?'selected':'' ?> class="bg-secondary text-white"><?= ucfirst($s) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">Admin Notes (Tracking, shipping details)</label>
+          <input type="text" name="admin_notes" value="<?= htmlspecialchars($order['admin_notes'] ?? '') ?>" placeholder="e.g. Dispatched via DTDC, Tracking ID: 123456" 
+                 class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-200 text-sm">
+        </div>
+      </div>
+      <div>
+        <button type="submit" name="update_order" class="bg-primary hover:bg-primary-dark text-secondary font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all duration-200 text-sm cursor-pointer">
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="text-left mb-6">
+    <a href="/admin/orders.php" class="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-white font-semibold">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+      </svg>
+      Back to All Orders
+    </a>
+  </div>
+
+<?php else: ?>
+  <!-- View Orders List -->
+  <div class="flex gap-2 flex-wrap mb-6">
+    <?php foreach (['all'=>'All Orders','pending'=>'Pending','processing'=>'Processing','shipped'=>'Shipped','delivered'=>'Delivered','cancelled'=>'Cancelled'] as $k=>$v): ?>
+      <?php
+        $isActive = $statusFilter===$k;
+        $tabClass = $isActive 
+          ? 'bg-primary text-secondary font-bold border-primary' 
+          : 'bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10 hover:border-white/20';
+      ?>
+      <a href="/admin/orders.php?status=<?= $k ?>" class="px-4 py-2 border rounded-full text-xs font-semibold transition-all duration-200 <?= $tabClass ?>">
+        <?= $v ?>
+      </a>
+    <?php endforeach; ?>
+  </div>
+
+  <?php if ($orders): ?>
+    <div class="bg-secondary/40 border border-white/5 rounded-2xl overflow-hidden shadow-xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left text-zinc-300">
+          <thead class="text-xs uppercase bg-white/5 text-zinc-400 font-bold border-b border-white/5">
+            <tr>
+              <th scope="col" class="px-6 py-4">Order ID</th>
+              <th scope="col" class="px-6 py-4">Photographer</th>
+              <th scope="col" class="px-6 py-4">Date</th>
+              <th scope="col" class="px-6 py-4">Items Count</th>
+              <th scope="col" class="px-6 py-4">Total Amount</th>
+              <th scope="col" class="px-6 py-4">Status</th>
+              <th scope="col" class="px-6 py-4 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($orders as $o): ?>
+              <tr class="border-b border-white/5 hover:bg-white/[0.01] transition-colors">
+                <td class="px-6 py-4 font-bold text-white">#<?= $o['id'] ?></td>
+                <td class="px-6 py-4"><?= htmlspecialchars($o['photographer_name']) ?></td>
+                <td class="px-6 py-4"><?= date('d M Y', strtotime($o['created_at'])) ?></td>
+                <td class="px-6 py-4 font-semibold text-zinc-400"><?= $o['item_count'] ?> items</td>
+                <td class="px-6 py-4 font-bold text-primary">₹<?= number_format($o['total']) ?></td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold <?= $statusClasses[$o['status']] ?? 'bg-zinc-500/10 text-zinc-400' ?>">
+                    <?= ucfirst($o['status']) ?>
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <a href="/admin/orders.php?id=<?= $o['id'] ?>" class="text-xs bg-primary hover:bg-primary-dark text-secondary font-bold px-3.5 py-2 rounded-xl transition-colors inline-block">
+                    Manage
+                  </a>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <?php else: ?>
+    <div class="bg-secondary/40 border border-white/5 rounded-2xl p-12 text-center text-zinc-500 shadow-xl">
+      No orders found.
+    </div>
+  <?php endif; ?>
+<?php endif; ?>
+
+<?php require_once '../includes/admin_footer.php'; ?>

@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# temp and local debug files
+temp_inspect_zip/
+temp_verify/
+test_*.php
+migrate_*.php
+backend/photographer/debug_*.php
+
+# build/deployment archives
+backend.zip
+frontend.zip
+
+
