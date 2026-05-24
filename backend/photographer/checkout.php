@@ -18,6 +18,27 @@ $total = array_sum(array_map(fn($i) => $i['price'] * $i['quantity'], $cart));
 $error = '';
 $success = false;
 
+// Auto-migrate: ensure user_addresses table and shipping_address column exist
+try {
+    $db->exec("CREATE TABLE IF NOT EXISTS `user_addresses` (
+        `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+        `user_id` int(10) UNSIGNED NOT NULL,
+        `label` varchar(150) NOT NULL,
+        `address_line` text NOT NULL,
+        `city` varchar(100) NOT NULL,
+        `state` varchar(100) NOT NULL,
+        `pincode` varchar(20) NOT NULL,
+        `phone` varchar(20) DEFAULT NULL,
+        `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+        PRIMARY KEY (`id`),
+        KEY `fk_addr_user` (`user_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+} catch (PDOException $e) { /* table may already exist */ }
+
+try {
+    $db->exec("ALTER TABLE `orders` ADD COLUMN `shipping_address` TEXT DEFAULT NULL");
+} catch (PDOException $e) { /* column may already exist */ }
+
 // Fetch saved addresses
 $addrStmt = $db->prepare("SELECT * FROM user_addresses WHERE user_id=? ORDER BY id DESC");
 $addrStmt->execute([$userId]);
