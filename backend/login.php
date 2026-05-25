@@ -1,4 +1,6 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 $pageTitle = 'Login – SD Colours Photobook Lab';
 require_once 'includes/auth.php';
 startSession();
