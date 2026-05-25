@@ -25,7 +25,7 @@ $order = null;
 $items = [];
 
 if ($viewId) {
-    $stmt = $db->prepare("SELECT o.*, u.name as photographer_name, u.email as photographer_email, u.phone as photographer_phone, u.studio_name FROM orders o JOIN users u ON o.photographer_id=u.id WHERE o.id=?");
+    $stmt = $db->prepare("SELECT o.*, u.name as photographer_name, u.email as photographer_email, u.phone as photographer_phone, u.studio_name FROM orders o LEFT JOIN users u ON o.photographer_id=u.id WHERE o.id=?");
     $stmt->execute([$viewId]);
     $order = $stmt->fetch();
     if ($order) {
@@ -37,7 +37,7 @@ if ($viewId) {
 
 $where = $statusFilter !== 'all' ? "WHERE o.status=?" : "WHERE 1=1";
 $params = $statusFilter !== 'all' ? [$statusFilter] : [];
-$stmt = $db->prepare("SELECT o.*, u.name as photographer_name, COUNT(oi.id) as item_count FROM orders o JOIN users u ON o.photographer_id=u.id LEFT JOIN order_items oi ON o.id=oi.order_id $where GROUP BY o.id, u.name ORDER BY o.created_at DESC");
+$stmt = $db->prepare("SELECT o.*, COALESCE(u.name, o.manual_studio_name, 'Offline Client') as photographer_name, COUNT(oi.id) as item_count FROM orders o LEFT JOIN users u ON o.photographer_id=u.id LEFT JOIN order_items oi ON o.id=oi.order_id $where GROUP BY o.id, u.name, o.manual_studio_name ORDER BY o.created_at DESC");
 $stmt->execute($params);
 $orders = $stmt->fetchAll();
 
@@ -60,7 +60,12 @@ $statusClasses = [
       <?= $order ? 'Reviewing specific photobook printing order information.' : 'View, track, and update incoming client printing orders.' ?>
     </p>
   </div>
-  <div>
+  <div class="flex items-center gap-3">
+    <?php if (!$order): ?>
+      <a href="/admin/create_order.php" class="inline-flex items-center gap-1.5 bg-primary hover:bg-primary-dark text-secondary text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-lg">
+        ➕ Add Manual Order
+      </a>
+    <?php endif; ?>
     <a href="/admin/index.php" class="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-bold">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
@@ -90,7 +95,13 @@ $statusClasses = [
           <span class="text-xs text-zinc-500 font-semibold uppercase tracking-wider block">Order ID</span>
           <h2 class="text-lg font-bold text-white">#<?= $order['id'] ?> &mdash; <span class="text-zinc-400 text-sm font-normal"><?= date('d M Y, h:i A', strtotime($order['created_at'])) ?></span></h2>
         </div>
-        <div>
+        <div class="flex items-center gap-3">
+          <a href="/invoice.php?id=<?= $order['id'] ?>&key=<?= $order['secure_key'] ?>" target="_blank" class="inline-flex items-center gap-1.5 bg-primary hover:bg-primary-dark text-secondary text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.656" />
+            </svg>
+            Generate Invoice / Bill
+          </a>
           <span class="inline-flex px-3 py-1.5 rounded-full text-xs font-semibold <?= $statusClasses[$order['status']] ?? 'bg-zinc-500/10 text-zinc-400' ?>">
             Status: <?= ucfirst($order['status']) ?>
           </span>
@@ -102,8 +113,11 @@ $statusClasses = [
         <?php foreach ($items as $item): ?>
           <div class="px-6 py-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:bg-white/[0.01] transition-colors">
             <div>
-              <h3 class="font-bold text-white text-base">
-                <?= htmlspecialchars($item['product_name']) ?>
+              <h3 class="font-bold text-white text-base flex flex-wrap items-center gap-2">
+                <?php if (!empty($item['print_type'])): ?>
+                  <span class="text-[10px] uppercase font-extrabold px-2 py-0.5 bg-white/5 border border-white/10 rounded text-zinc-400"><?= htmlspecialchars($item['print_type']) ?></span>
+                <?php endif; ?>
+                <span><?= htmlspecialchars($item['product_name']) ?></span>
                 <?php if ($item['size']): ?>
                   <span class="text-primary text-xs font-medium border border-primary/20 bg-primary/5 rounded px-2 py-0.5 ml-2 inline-block"><?= htmlspecialchars($item['size']) ?></span>
                 <?php endif; ?>
@@ -142,27 +156,52 @@ $statusClasses = [
     <div class="space-y-6">
       <!-- Photographer Details Card -->
       <div class="bg-secondary/40 border border-white/5 rounded-2xl p-6 shadow-xl">
-        <h3 class="text-xs text-zinc-500 font-semibold uppercase tracking-wider border-b border-white/5 pb-3 mb-4">Photographer Info</h3>
+        <h3 class="text-xs text-zinc-500 font-semibold uppercase tracking-wider border-b border-white/5 pb-3 mb-4">
+          <?= ($order['photographer_id'] === null) ? 'Manual Client Info' : 'Photographer Info' ?>
+        </h3>
         <div class="space-y-4">
-          <div>
-            <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Full Name</span>
-            <span class="text-sm font-bold text-white block"><?= htmlspecialchars($order['photographer_name']) ?></span>
-          </div>
-          <?php if ($order['studio_name']): ?>
+          <?php if ($order['photographer_id'] === null): ?>
             <div>
-              <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Studio Name</span>
-              <span class="text-sm font-bold text-primary block"><?= htmlspecialchars($order['studio_name']) ?></span>
+              <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Studio Name / Client</span>
+              <span class="text-sm font-bold text-white block"><?= htmlspecialchars($order['manual_studio_name']) ?></span>
             </div>
-          <?php endif; ?>
-          <div>
-            <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Email Address</span>
-            <a href="mailto:<?= htmlspecialchars($order['photographer_email']) ?>" class="text-sm text-zinc-300 hover:text-primary transition-colors block"><?= htmlspecialchars($order['photographer_email']) ?></a>
-          </div>
-          <?php if ($order['photographer_phone']): ?>
+            <?php if ($order['manual_phone']): ?>
+              <div>
+                <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Phone Contact</span>
+                <a href="tel:<?= htmlspecialchars($order['manual_phone']) ?>" class="text-sm text-zinc-300 hover:text-primary transition-colors block"><?= htmlspecialchars($order['manual_phone']) ?></a>
+              </div>
+            <?php endif; ?>
+            <?php if ($order['manual_size']): ?>
+              <div>
+                <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Order Size (Slip Header)</span>
+                <span class="text-sm font-bold text-zinc-300 block"><?= htmlspecialchars($order['manual_size']) ?></span>
+              </div>
+            <?php endif; ?>
             <div>
-              <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Phone Contact</span>
-              <a href="tel:<?= htmlspecialchars($order['photographer_phone']) ?>" class="text-sm text-zinc-300 hover:text-primary transition-colors block"><?= htmlspecialchars($order['photographer_phone']) ?></a>
+              <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Order Type</span>
+              <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase mt-0.5">Offline / Manual</span>
             </div>
+          <?php else: ?>
+            <div>
+              <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Full Name</span>
+              <span class="text-sm font-bold text-white block"><?= htmlspecialchars($order['photographer_name']) ?></span>
+            </div>
+            <?php if ($order['studio_name']): ?>
+              <div>
+                <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Studio Name</span>
+                <span class="text-sm font-bold text-primary block"><?= htmlspecialchars($order['studio_name']) ?></span>
+              </div>
+            <?php endif; ?>
+            <div>
+              <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Email Address</span>
+              <a href="mailto:<?= htmlspecialchars($order['photographer_email']) ?>" class="text-sm text-zinc-300 hover:text-primary transition-colors block"><?= htmlspecialchars($order['photographer_email']) ?></a>
+            </div>
+            <?php if ($order['photographer_phone']): ?>
+              <div>
+                <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Phone Contact</span>
+                <a href="tel:<?= htmlspecialchars($order['photographer_phone']) ?>" class="text-sm text-zinc-300 hover:text-primary transition-colors block"><?= htmlspecialchars($order['photographer_phone']) ?></a>
+              </div>
+            <?php endif; ?>
           <?php endif; ?>
         </div>
       </div>
@@ -170,9 +209,26 @@ $statusClasses = [
       <!-- Financial Card -->
       <div class="bg-secondary/40 border border-white/5 rounded-2xl p-6 shadow-xl">
         <h3 class="text-xs text-zinc-500 font-semibold uppercase tracking-wider border-b border-white/5 pb-3 mb-4">Pricing Total</h3>
-        <div class="text-center py-4">
-          <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block mb-1">Grand Net Price</span>
-          <span class="text-3xl font-black text-primary">₹<?= number_format($order['total']) ?></span>
+        <div class="space-y-3 py-2 text-sm text-zinc-300">
+          <?php if (isset($order['discount_amount']) && $order['discount_amount'] > 0): ?>
+            <div class="flex justify-between">
+              <span>Gross Subtotal:</span>
+              <span class="font-bold text-white">₹<?= number_format($order['total']) ?></span>
+            </div>
+            <div class="flex justify-between text-red-400">
+              <span>Discount (<?= $order['discount_percent'] ?>%):</span>
+              <span class="font-bold">-₹<?= number_format($order['discount_amount']) ?></span>
+            </div>
+            <div class="border-t border-white/5 pt-3 flex justify-between items-center">
+              <span class="text-xs font-semibold text-zinc-400 uppercase">Grand Net Price:</span>
+              <span class="text-2xl font-black text-primary">₹<?= number_format($order['net_pay']) ?></span>
+            </div>
+          <?php else: ?>
+            <div class="text-center py-2">
+              <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block mb-1">Grand Net Price</span>
+              <span class="text-3xl font-black text-primary">₹<?= number_format($order['total']) ?></span>
+            </div>
+          <?php endif; ?>
         </div>
       </div>
     </div>

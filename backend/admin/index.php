@@ -13,7 +13,7 @@ $pendingPhotographers = $db->query("SELECT COUNT(*) FROM users WHERE role='photo
 $totalRevenue = $db->query("SELECT COALESCE(SUM(total),0) FROM orders WHERE status != 'cancelled'")->fetchColumn();
 $totalProducts = $db->query("SELECT COUNT(*) FROM products WHERE active=1")->fetchColumn();
 
-$recentOrders = $db->query("SELECT o.*, u.name as photographer_name FROM orders o JOIN users u ON o.photographer_id=u.id ORDER BY o.created_at DESC LIMIT 8")->fetchAll();
+$recentOrders = $db->query("SELECT o.*, COALESCE(u.name, o.manual_studio_name, 'Offline Client') as photographer_name FROM orders o LEFT JOIN users u ON o.photographer_id=u.id ORDER BY o.created_at DESC LIMIT 8")->fetchAll();
 
 require_once '../includes/admin_header.php';
 ?>
