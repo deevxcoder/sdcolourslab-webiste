@@ -111,6 +111,14 @@ try {
         PRIMARY KEY (`key`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     echo "  ✓ settings table\n";
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `lab_settings` (
+        `key` varchar(100) NOT NULL,
+        `value` text DEFAULT NULL,
+        `description` varchar(255) DEFAULT NULL,
+        PRIMARY KEY (`key`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    echo "  ✓ lab_settings table\n";
     
     // Seed default settings if empty
     $checkSettings = $pdo->query("SELECT COUNT(*) FROM `settings`")->fetchColumn();
@@ -125,6 +133,17 @@ try {
         ];
         $stmtS->execute(['branches', json_encode($branches)]);
         echo "    ✓ settings table defaults seeded\n";
+    }
+
+    $checkLab = $pdo->query("SELECT COUNT(*) FROM `lab_settings`")->fetchColumn();
+    if ($checkLab == 0) {
+        $stmtL = $pdo->prepare("INSERT INTO `lab_settings` (`key`, `value`, `description`) VALUES (?, ?, ?)");
+        $stmtL->execute(['lab_name', 'SD Colours Lab', 'Laboratory Display Name']);
+        $stmtL->execute(['contact_phone', '+91 8895838987', 'Primary contact number']);
+        $stmtL->execute(['contact_email', 'admin@sdcolours.com', 'Primary contact email']);
+        $stmtL->execute(['currency_symbol', '₹', 'Currency symbol']);
+        $stmtL->execute(['address', 'Madhusudan marg, Naredi Tower Complex (In front of Raymond showroom) RKL- 769001 (ODISHA)', 'Full Lab Address']);
+        echo "    ✓ lab_settings table defaults seeded\n";
     }
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS `order_items` (

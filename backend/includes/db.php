@@ -47,6 +47,23 @@ function getDB() {
             } catch (PDOException $e) { /* silent fallback */ }
             
             try {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS `lab_settings` (
+                    `key` VARCHAR(100) PRIMARY KEY,
+                    `value` TEXT NULL,
+                    `description` VARCHAR(255) NULL
+                )");
+                $checkLab = $pdo->query("SELECT COUNT(*) FROM `lab_settings`")->fetchColumn();
+                if ($checkLab == 0) {
+                    $stmt = $pdo->prepare("INSERT INTO `lab_settings` (`key`, `value`, `description`) VALUES (?, ?, ?)");
+                    $stmt->execute(['lab_name', 'SD Colours Lab', 'Laboratory Display Name']);
+                    $stmt->execute(['contact_phone', '+91 8895838987', 'Primary contact number']);
+                    $stmt->execute(['contact_email', 'admin@sdcolours.com', 'Primary contact email']);
+                    $stmt->execute(['currency_symbol', '₹', 'Currency symbol']);
+                    $stmt->execute(['address', 'Madhusudan marg, Naredi Tower Complex (In front of Raymond showroom) RKL- 769001 (ODISHA)', 'Full Lab Address']);
+                }
+            } catch (PDOException $e) { /* silent fallback */ }
+
+            try {
                 $pdo->exec("ALTER TABLE `orders` MODIFY COLUMN `status` ENUM('pending','paid','processing','shipped','delivered','cancelled') NOT NULL DEFAULT 'pending'");
             } catch (PDOException $e) { /* column may already exist */ }
 

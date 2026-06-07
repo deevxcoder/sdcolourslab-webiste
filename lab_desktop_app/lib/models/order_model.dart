@@ -46,6 +46,8 @@ class LabOrder {
   final String status;
   final String? notes;
   final String? adminNotes;
+  final String? driveLink;
+  final String? shippingAddress;
   final DateTime createdAt;
   final List<OrderItem>? items;
 
@@ -58,6 +60,8 @@ class LabOrder {
     required this.status,
     this.notes,
     this.adminNotes,
+    this.driveLink,
+    this.shippingAddress,
     required this.createdAt,
     this.items,
   });
@@ -74,6 +78,8 @@ class LabOrder {
       status: json['status'] ?? 'pending',
       notes: json['notes'],
       adminNotes: json['admin_notes'],
+      driveLink: json['drive_link'],
+      shippingAddress: json['shipping_address'],
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
       items: json['items'] != null
           ? (json['items'] as List).map((i) => OrderItem.fromJson(i)).toList()

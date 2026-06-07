@@ -127,6 +127,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     Color color;
     switch (status.toLowerCase()) {
       case 'pending': color = Colors.orangeAccent; break;
+      case 'paid': color = Colors.tealAccent; break;
       case 'processing': color = Colors.blueAccent; break;
       case 'shipped': color = Colors.purpleAccent; break;
       case 'delivered': color = Colors.greenAccent; break;
@@ -154,6 +155,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
         _statusFilterButton('All', null),
         const SizedBox(width: 8),
         _statusFilterButton('Pending', 'pending'),
+        const SizedBox(width: 8),
+        _statusFilterButton('Paid', 'paid'),
         const SizedBox(width: 8),
         _statusFilterButton('Processing', 'processing'),
         const SizedBox(width: 8),
@@ -206,6 +209,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   subtitle: Text(order.notes!, style: const TextStyle(color: Colors.white70)),
                 ),
               ],
+              if (details.driveLink != null && details.driveLink!.isNotEmpty) ...[
+                const Divider(color: Colors.white10),
+                ListTile(
+                  title: const Text('Design Files Link', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  subtitle: SelectableText(details.driveLink!, style: const TextStyle(color: Colors.lightBlueAccent, decoration: TextDecoration.underline)),
+                ),
+              ],
+              if (details.shippingAddress != null && details.shippingAddress!.isNotEmpty) ...[
+                const Divider(color: Colors.white10),
+                ListTile(
+                  title: const Text('Shipping Address', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  subtitle: Text(details.shippingAddress!, style: const TextStyle(color: Colors.white70)),
+                ),
+              ],
             ],
           ),
         ),
@@ -217,7 +234,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   void _showStatusPicker(LabOrder order) {
-    final statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    final statuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'];
     showDialog(
       context: context,
       builder: (context) => SimpleDialog(
