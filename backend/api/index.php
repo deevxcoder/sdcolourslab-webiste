@@ -212,8 +212,11 @@ if ($method === 'POST' && $path === '/photographer/orders') {
         $lines[] = ['product_id' => (int)$prod['id'], 'product_name' => $prod['name'], 'size' => trim($item['size'] ?? ''), 'quantity' => $qty, 'unit_price' => $price, 'notes' => trim($item['notes'] ?? '')];
     }
     $db->beginTransaction();
-    $ins = $db->prepare("INSERT INTO orders (photographer_id, total, status, notes) VALUES (?,?,'pending',?)");
-    $ins->execute([(int)$user['id'], $total, trim($b['notes'] ?? '')]);
+    $secureKey = bin2hex(random_bytes(16));
+    $driveLink = trim($b['drive_link'] ?? '');
+    $shippingAddress = trim($b['shipping_address'] ?? '');
+    $ins = $db->prepare("INSERT INTO orders (photographer_id, total, status, notes, drive_link, shipping_address, secure_key, net_pay) VALUES (?,?,'pending',?,?,?,?,?)");
+    $ins->execute([(int)$user['id'], $total, trim($b['notes'] ?? ''), $driveLink, $shippingAddress, $secureKey, $total]);
     $orderId = (int)$db->lastInsertId();
     $iins = $db->prepare("INSERT INTO order_items (order_id, product_id, product_name, size, quantity, unit_price, notes) VALUES (?,?,?,?,?,?,?)");
     foreach ($lines as $l) $iins->execute([$orderId, $l['product_id'], $l['product_name'], $l['size'], $l['quantity'], $l['unit_price'], $l['notes']]);

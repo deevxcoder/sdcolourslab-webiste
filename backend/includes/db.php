@@ -49,6 +49,16 @@ function getDB() {
             try {
                 $pdo->exec("ALTER TABLE `orders` MODIFY COLUMN `status` ENUM('pending','paid','processing','shipped','delivered','cancelled') NOT NULL DEFAULT 'pending'");
             } catch (PDOException $e) { /* column may already exist */ }
+
+            try {
+                $ordersToFix = $pdo->query("SELECT id FROM `orders` WHERE `secure_key` IS NULL OR `secure_key` = ''")->fetchAll();
+                if (!empty($ordersToFix)) {
+                    $upStmt = $pdo->prepare("UPDATE `orders` SET `secure_key` = ? WHERE id = ?");
+                    foreach ($ordersToFix as $oToFix) {
+                        $upStmt->execute([bin2hex(random_bytes(16)), $oToFix['id']]);
+                    }
+                }
+            } catch (PDOException $e) { /* fallback */ }
             
             return $pdo;
         } catch (PDOException $e) {
