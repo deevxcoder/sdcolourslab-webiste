@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order'])) {
     $orderId = (int)$_POST['order_id'];
     $status = $_POST['status'];
     $adminNotes = trim($_POST['admin_notes'] ?? '');
-    $allowed = ['pending','processing','shipped','delivered','cancelled'];
+    $allowed = ['pending','paid','processing','shipped','delivered','cancelled'];
     if (in_array($status, $allowed)) {
         $stmt = $db->prepare("UPDATE orders SET status=?, admin_notes=?, updated_at=NOW() WHERE id=?");
         $stmt->execute([$status, $adminNotes, $orderId]);
@@ -46,6 +46,7 @@ require_once '../includes/admin_header.php';
 // Helper status classes
 $statusClasses = [
   'pending' => 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+  'paid' => 'bg-green-500/10 text-green-400 border border-green-500/20',
   'processing' => 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
   'shipped' => 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
   'delivered' => 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
@@ -203,6 +204,16 @@ $statusClasses = [
               </div>
             <?php endif; ?>
           <?php endif; ?>
+          
+          <?php if (!empty($order['drive_link'])): ?>
+            <div class="border-t border-white/5 pt-3 mt-3">
+              <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider block">Design Files (Drive / WeTransfer)</span>
+              <a href="<?= htmlspecialchars($order['drive_link']) ?>" target="_blank" 
+                 class="inline-flex items-center gap-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-blue-500/20 mt-1.5 w-full justify-center">
+                🔗 Open Files Link
+              </a>
+            </div>
+          <?php endif; ?>
         </div>
       </div>
 
@@ -243,7 +254,7 @@ $statusClasses = [
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">Order Status</label>
           <select name="status" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-200 text-sm">
-            <?php foreach (['pending','processing','shipped','delivered','cancelled'] as $s): ?>
+            <?php foreach (['pending','paid','processing','shipped','delivered','cancelled'] as $s): ?>
               <option value="<?= $s ?>" <?= $order['status']===$s?'selected':'' ?> class="bg-secondary text-white"><?= ucfirst($s) ?></option>
             <?php endforeach; ?>
           </select>
@@ -274,7 +285,7 @@ $statusClasses = [
 <?php else: ?>
   <!-- View Orders List -->
   <div class="flex gap-2 flex-wrap mb-6">
-    <?php foreach (['all'=>'All Orders','pending'=>'Pending','processing'=>'Processing','shipped'=>'Shipped','delivered'=>'Delivered','cancelled'=>'Cancelled'] as $k=>$v): ?>
+    <?php foreach (['all'=>'All Orders','pending'=>'Pending','paid'=>'Paid','processing'=>'Processing','shipped'=>'Shipped','delivered'=>'Delivered','cancelled'=>'Cancelled'] as $k=>$v): ?>
       <?php
         $isActive = $statusFilter===$k;
         $tabClass = $isActive 

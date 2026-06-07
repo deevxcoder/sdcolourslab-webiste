@@ -25,6 +25,31 @@ function getDB() {
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
             ]);
+            
+            // Auto-migrate settings table and status ENUM for MySQL live database
+            try {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS `settings` (
+                    `key` VARCHAR(100) PRIMARY KEY,
+                    `value` TEXT NULL
+                )");
+                $check = $pdo->query("SELECT COUNT(*) FROM `settings`")->fetchColumn();
+                if ($check == 0) {
+                    $stmt = $pdo->prepare("INSERT INTO `settings` (`key`, `value`) VALUES (?, ?)");
+                    $stmt->execute(['phone_number', '8895838987, 8260754410']);
+                    $stmt->execute(['whatsapp_number', '8895838987']);
+                    $stmt->execute(['lab_address', 'Madhusudan marg, Naredi Tower Complex (In front of Raymond showroom) RKL- 769001 (ODISHA)']);
+                    $branches = [
+                        ['name' => 'Corporate Office', 'address' => 'Madhusudan marg, Naredi Tower Complex, RKL- 769001 (ODISHA)'],
+                        ['name' => 'Sambalpur Branch', 'address' => 'Budharaja, Sambalpur - 768004']
+                    ];
+                    $stmt->execute(['branches', json_encode($branches)]);
+                }
+            } catch (PDOException $e) { /* silent fallback */ }
+            
+            try {
+                $pdo->exec("ALTER TABLE `orders` MODIFY COLUMN `status` ENUM('pending','paid','processing','shipped','delivered','cancelled') NOT NULL DEFAULT 'pending'");
+            } catch (PDOException $e) { /* column may already exist */ }
+            
             return $pdo;
         } catch (PDOException $e) {
             // In production, connection failure is fatal

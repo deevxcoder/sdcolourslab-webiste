@@ -6,6 +6,7 @@ import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
 import { BookOpen, FolderHeart, Zap, Grid, FileText, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { getBackendUrl } from "@/lib/backend";
 
 interface DbProduct {
   id: number;
@@ -24,12 +25,8 @@ export default function Products() {
   const [products, setProducts] = useState<DbProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const getBackendUrl = (path: string) => {
-    const isDev = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-    const base = isDev ? "http://127.0.0.1:8000" : "https://backend.sdcolourslab.in";
-    return `${base}${path}`;
-  };
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     async function fetchProducts() {
@@ -51,8 +48,24 @@ export default function Products() {
     fetchProducts();
   }, []);
 
+  // Filter products by selectedCategory and searchQuery
+  const filteredProducts = products.filter((p) => {
+    if (selectedCategory !== "all" && p.category !== selectedCategory) {
+      return false;
+    }
+    if (searchQuery !== "") {
+      const q = searchQuery.toLowerCase();
+      const nameMatch = p.name.toLowerCase().includes(q);
+      const descMatch = (p.description || "").toLowerCase().includes(q);
+      const sizeMatch = p.sizes.some((s) => s.toLowerCase().includes(q));
+      const featMatch = p.features.some((f) => f.toLowerCase().includes(q));
+      return nameMatch || descMatch || sizeMatch || featMatch;
+    }
+    return true;
+  });
+
   // Filter and map Albums
-  const albums = products
+  const albums = filteredProducts
     .filter((p) => p.category === "album")
     .map((p) => ({
       id: p.id,
@@ -68,7 +81,7 @@ export default function Products() {
     }));
 
   // Filter and map Combos
-  const combos = products
+  const combos = filteredProducts
     .filter((p) => p.category === "combo")
     .map((p) => ({
       id: p.id,
@@ -84,7 +97,7 @@ export default function Products() {
     }));
 
   // Filter and map LED Frames
-  const ledFrames = products
+  const ledFrames = filteredProducts
     .filter((p) => p.category === "led_frame")
     .map((p) => {
       const sizeStr = p.sizes[0] || p.name.replace(/led\s*frame/i, "").trim() || "Standard";
@@ -95,7 +108,7 @@ export default function Products() {
     });
 
   // Filter and map Wall Acrylics
-  const acrylics = products
+  const acrylics = filteredProducts
     .filter((p) => p.category === "wall_acrylic")
     .map((p) => {
       const sizeStr = p.sizes[0] || p.name.replace(/acrylic/i, "").trim() || "Standard";
@@ -179,6 +192,65 @@ export default function Products() {
           </div>
         ) : (
           <>
+            {/* Filter Bar */}
+            <section className="bg-white border-b border-zinc-200/50 py-5 sticky top-16 z-20 shadow-sm">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                
+                {/* Search Box */}
+                <div className="relative w-full md:w-80">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search catalog by name, size..."
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-full pl-9 pr-8 py-2 text-xs text-secondary placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-200 font-semibold"
+                  />
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-zinc-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                  </div>
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-400 hover:text-secondary cursor-pointer"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Selector Tabs */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none scroll-smooth">
+                  {[
+                    { id: "all", label: "All Products" },
+                    { id: "album", label: "Wedding Albums" },
+                    { id: "combo", label: "Combo Packages" },
+                    { id: "led_frame", label: "LED Frames" },
+                    { id: "wall_acrylic", label: "Wall Acrylics" },
+                  ].map((tab) => {
+                    const isActive = selectedCategory === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setSelectedCategory(tab.id)}
+                        className={`px-4 py-2 rounded-full text-[11px] font-extrabold whitespace-nowrap border transition-all duration-200 cursor-pointer ${
+                          isActive
+                            ? "bg-primary border-primary text-secondary"
+                            : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100 hover:text-secondary"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+              </div>
+            </section>
+
             {/* SECTION A: WEDDING ALBUMS */}
             {albums.length > 0 && (
               <section id="albums" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 scroll-mt-24 space-y-12 animate-fade-in">
@@ -198,7 +270,7 @@ export default function Products() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                   {albums.map((item) => (
-                    <ProductCard key={item.id} {...item} />
+                    <ProductCard key={item.id} hideImage={true} {...item} />
                   ))}
                 </div>
               </section>
@@ -332,6 +404,28 @@ export default function Products() {
                   </div>
                 </div>
               </section>
+            )}
+
+            {/* NO PRODUCTS FOUND FALLBACK */}
+            {albums.length === 0 && combos.length === 0 && ledFrames.length === 0 && acrylics.length === 0 && (
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center animate-fade-in">
+                <div className="bg-white border border-zinc-200/80 rounded-2xl p-12 max-w-lg mx-auto shadow-md">
+                  <div className="text-5xl mb-4 text-zinc-300">🔍</div>
+                  <h3 className="font-serif text-lg font-bold text-secondary">No matching products found</h3>
+                  <p className="text-zinc-500 text-xs mt-2 max-w-sm mx-auto">
+                    We couldn't find any items matching your filter selection or search query. Try broadening your keywords.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSelectedCategory("all");
+                    }}
+                    className="mt-6 bg-primary text-secondary text-xs font-extrabold px-6 py-2.5 rounded-full hover:bg-primary-dark transition-all cursor-pointer shadow-md"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              </div>
             )}
           </>
         )}

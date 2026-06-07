@@ -83,18 +83,49 @@ try {
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS `orders` (
         `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-        `photographer_id` int(10) UNSIGNED NOT NULL,
-        `status` enum('pending','processing','shipped','delivered','cancelled') NOT NULL DEFAULT 'pending',
+        `photographer_id` int(10) UNSIGNED DEFAULT NULL,
+        `status` enum('pending','paid','processing','shipped','delivered','cancelled') NOT NULL DEFAULT 'pending',
         `total` decimal(10,2) NOT NULL DEFAULT 0.00,
         `notes` text DEFAULT NULL,
         `admin_notes` text DEFAULT NULL,
+        `shipping_address` text DEFAULT NULL,
+        `manual_studio_name` varchar(200) DEFAULT NULL,
+        `manual_phone` varchar(20) DEFAULT NULL,
+        `manual_size` varchar(50) DEFAULT NULL,
+        `discount_percent` decimal(5,2) DEFAULT 0.00,
+        `discount_amount` decimal(10,2) DEFAULT 0.00,
+        `secure_key` varchar(64) DEFAULT NULL,
+        `net_pay` decimal(10,2) DEFAULT 0.00,
+        `drive_link` varchar(500) DEFAULT NULL,
         `created_at` datetime NOT NULL DEFAULT current_timestamp(),
         `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
         PRIMARY KEY (`id`),
         KEY `fk_orders_user` (`photographer_id`),
-        CONSTRAINT `fk_orders_user` FOREIGN KEY (`photographer_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+        CONSTRAINT `fk_orders_user` FOREIGN KEY (`photographer_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     echo "  ✓ orders table\n";
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `settings` (
+        `key` varchar(100) NOT NULL,
+        `value` text DEFAULT NULL,
+        PRIMARY KEY (`key`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    echo "  ✓ settings table\n";
+    
+    // Seed default settings if empty
+    $checkSettings = $pdo->query("SELECT COUNT(*) FROM `settings`")->fetchColumn();
+    if ($checkSettings == 0) {
+        $stmtS = $pdo->prepare("INSERT INTO `settings` (`key`, `value`) VALUES (?, ?)");
+        $stmtS->execute(['phone_number', '8895838987, 8260754410']);
+        $stmtS->execute(['whatsapp_number', '8895838987']);
+        $stmtS->execute(['lab_address', 'Madhusudan marg, Naredi Tower Complex (In front of Raymond showroom) RKL- 769001 (ODISHA)']);
+        $branches = [
+            ['name' => 'Corporate Office', 'address' => 'Madhusudan marg, Naredi Tower Complex, RKL- 769001 (ODISHA)'],
+            ['name' => 'Sambalpur Branch', 'address' => 'Budharaja, Sambalpur - 768004']
+        ];
+        $stmtS->execute(['branches', json_encode($branches)]);
+        echo "    ✓ settings table defaults seeded\n";
+    }
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS `order_items` (
         `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,

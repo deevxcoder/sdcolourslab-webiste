@@ -39,6 +39,10 @@ try {
     $db->exec("ALTER TABLE `orders` ADD COLUMN `shipping_address` TEXT DEFAULT NULL");
 } catch (PDOException $e) { /* column may already exist */ }
 
+try {
+    $db->exec("ALTER TABLE `orders` ADD COLUMN `drive_link` VARCHAR(500) DEFAULT NULL");
+} catch (PDOException $e) { /* column may already exist */ }
+
 // Fetch saved addresses
 $addrStmt = $db->prepare("SELECT * FROM user_addresses WHERE user_id=? ORDER BY id DESC");
 $addrStmt->execute([$userId]);
@@ -46,10 +50,15 @@ $savedAddresses = $addrStmt->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notes = trim($_POST['notes'] ?? '');
+    $driveLink = trim($_POST['drive_link'] ?? '');
     $addressSelection = trim($_POST['address_selection'] ?? 'new');
     
     try {
         $db->beginTransaction();
+        
+        if (empty($driveLink)) {
+            throw new Exception("Please provide a Google Drive or WeTransfer link for your files.");
+        }
         
         $shippingAddress = '';
         
@@ -89,8 +98,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                              . "Phone: " . ($phone ?: 'N/A');
         }
         
-        $stmt = $db->prepare("INSERT INTO orders (photographer_id, total, notes, status, shipping_address) VALUES (?, ?, ?, 'pending', ?)");
-        $stmt->execute([$userId, $total, $notes, $shippingAddress]);
+        $secureKey = bin2hex(random_bytes(16));
+        $stmt = $db->prepare("INSERT INTO orders (photographer_id, total, notes, status, shipping_address, drive_link, secure_key, net_pay) VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)");
+        $stmt->execute([$userId, $total, $notes, $shippingAddress, $driveLink, $secureKey, $total]);
         $orderId = $db->lastInsertId();
         
         foreach ($cart as $item) {
@@ -259,6 +269,14 @@ require_once '../includes/photographer_header.php';
         </div>
       </div>
 
+      <!-- Drive Link Card -->
+      <div class="mx-4 bg-darkcard border border-white/5 rounded-2xl p-4">
+        <label class="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Google Drive / WeTransfer Link *</label>
+        <input type="url" name="drive_link" required placeholder="https://drive.google.com/drive/folders/..."
+               class="w-full bg-zinc-800 border border-white/10 text-white rounded-xl px-4 py-3 text-xs placeholder-zinc-600 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+        <p class="text-zinc-500 text-[10px] mt-1.5 leading-relaxed">Please upload your album sheets/photos and share the link here. Make sure sharing is set to "Anyone with the link".</p>
+      </div>
+
       <!-- Notes Card -->
       <div class="mx-4 bg-darkcard border border-white/5 rounded-2xl p-4">
         <label class="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Order Notes / Instructions</label>
@@ -365,6 +383,14 @@ require_once '../includes/photographer_header.php';
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- Drive Link Box -->
+          <div class="bg-darkcard border border-white/5 rounded-2xl p-6">
+            <label class="block text-sm font-bold text-white mb-3 uppercase tracking-wider">Google Drive / WeTransfer Link *</label>
+            <input type="url" name="drive_link" required placeholder="https://drive.google.com/drive/folders/..."
+                   class="w-full bg-zinc-800 border border-white/10 text-white rounded-xl px-4 py-3 text-sm placeholder-zinc-600 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+            <p class="text-zinc-500 text-xs mt-2 leading-relaxed">Upload your printing files to Google Drive or WeTransfer and paste the link here. Ensure link settings are set to **"Anyone with the link"**.</p>
           </div>
 
           <!-- Notes Box -->

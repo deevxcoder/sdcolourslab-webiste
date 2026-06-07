@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getBackendUrl } from "@/lib/backend";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -36,11 +37,6 @@ export default function Register() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const getBackendUrl = (path: string) => {
-    const isDev = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-    const base = isDev ? "http://127.0.0.1:8000" : "https://backend.sdcolourslab.in";
-    return `${base}${path}`;
-  };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

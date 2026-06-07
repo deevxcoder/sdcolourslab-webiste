@@ -6,7 +6,11 @@ require_once '../includes/db.php';
 startSession();
 $db = getDB();
 
-$cat = $_GET['cat'] ?? 'all';
+$categories = ['album' => 'Albums', 'combo' => 'Combos', 'led_frame' => 'LED Frames', 'wall_acrylic' => 'Acrylic'];
+$cat = $_GET['cat'] ?? 'album';
+if (!array_key_exists($cat, $categories)) {
+    $cat = 'album';
+}
 $message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_cart'])) {
@@ -76,9 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_cart'])) {
     }
 }
 
-$categories = ['all' => 'All', 'album' => 'Albums', 'combo' => 'Combos', 'led_frame' => 'LED Frames', 'wall_acrylic' => 'Acrylic'];
-$where  = $cat !== 'all' ? "AND category=?" : "";
-$params = $cat !== 'all' ? [$cat] : [];
+$where  = "AND category=?";
+$params = [$cat];
 $stmt   = $db->prepare("SELECT * FROM products WHERE active=1 $where ORDER BY sort_order");
 $stmt->execute($params);
 $products = $stmt->fetchAll();

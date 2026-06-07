@@ -1,5 +1,9 @@
-import Image from "next/image";
+"use client";
+
 import { CheckCircle2, MessageSquare } from "lucide-react";
+import { getBackendUrl } from "@/lib/backend";
+
+const PLACEHOLDER = "/images/product-placeholder.png";
 
 export interface ProductProps {
   id: number;
@@ -11,7 +15,8 @@ export interface ProductProps {
   sizes: string[];
   features: string[];
   tag?: string;
-  image: string;
+  image: string | null;
+  hideImage?: boolean;
 }
 
 export default function ProductCard({
@@ -22,38 +27,44 @@ export default function ProductCard({
   features,
   tag,
   image,
+  hideImage = false,
 }: ProductProps) {
+  // Build full backend image URL (image is a relative path like "/images/combos/foo.jpg")
+  const imageSrc = image ? getBackendUrl(image) : null;
+
   // Setup the WhatsApp message link
-  const messageText = `Hi SD Colours Lab! I would like to inquire/order:
-- Product: ${name}
-- Category: ${category}
-- Price: ₹${price}
-- Available Sizes: ${sizes.join(", ")}`;
+  const messageText = `Hi SD Colours Lab! I would like to inquire/order:\n- Product: ${name}\n- Category: ${category}\n- Price: ₹${price}\n- Available Sizes: ${sizes.join(", ")}`;
   const waLink = `https://wa.me/918895838987?text=${encodeURIComponent(messageText)}`;
 
   return (
     <div className="group rounded-2xl bg-white shadow-md border border-zinc-200/80 transition-all duration-300 hover:shadow-xl hover:border-zinc-300/80 overflow-hidden flex flex-col h-full">
       {/* Upper half: Image wrapper */}
-      <div className="relative aspect-[4/3] bg-zinc-100 overflow-hidden shrink-0">
-        {tag && (
-          <span
-            className={`absolute top-3 right-3 z-10 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider shadow-sm ${
-              tag.toLowerCase() === "premium"
-                ? "bg-secondary text-white"
-                : "bg-primary text-secondary"
-            }`}
-          >
-            {tag}
-          </span>
-        )}
-        <Image
-          src={image}
-          alt={name}
-          fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-      </div>
+      {!hideImage && (
+        <div className="relative aspect-[4/3] bg-zinc-100 overflow-hidden shrink-0 flex items-center justify-center">
+          {tag && (
+            <span
+              className={`absolute top-3 right-3 z-10 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider shadow-sm ${
+                tag.toLowerCase() === "premium"
+                  ? "bg-secondary text-white"
+                  : "bg-primary text-secondary"
+              }`}
+            >
+              {tag}
+            </span>
+          )}
+          {/* Product image — falls back to branded placeholder on null or load error */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageSrc ?? PLACEHOLDER}
+            alt={name}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={(e) => {
+              e.currentTarget.src = PLACEHOLDER;
+              e.currentTarget.onerror = null; // prevent infinite loop
+            }}
+          />
+        </div>
+      )}
 
       {/* Lower half: Content */}
       <div className="p-6 flex flex-col justify-between flex-grow gap-4">
@@ -64,7 +75,7 @@ export default function ProductCard({
           <h3 className="font-serif text-lg font-bold text-secondary tracking-tight leading-snug group-hover:text-primary transition-colors">
             {name}
           </h3>
-          
+
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-bold text-secondary">₹{price}</span>
             <span className="text-xs text-zinc-500 font-medium">onwards</span>

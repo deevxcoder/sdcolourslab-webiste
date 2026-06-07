@@ -27,6 +27,7 @@ $orders = $stmt->fetchAll();
 
 $statusMap = [
     'pending'    => ['bg-yellow-500/10 text-yellow-400', '⏳', 'Pending'],
+    'paid'       => ['bg-green-500/10 text-green-400',  '💵', 'Paid'],
     'processing' => ['bg-blue-500/10 text-blue-400',    '⚙️', 'Processing'],
     'shipped'    => ['bg-purple-500/10 text-purple-400', '🚚', 'Shipped'],
     'delivered'  => ['bg-green-500/10 text-green-400',  '✅', 'Delivered'],
@@ -108,6 +109,16 @@ require_once '../includes/photographer_header.php';
   <div class="mx-4 mb-3 bg-darkcard border border-white/5 rounded-2xl px-4 py-3">
     <div class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Your Note</div>
     <div class="text-zinc-300 text-sm"><?= htmlspecialchars($order['notes']) ?></div>
+  </div>
+  <?php endif; ?>
+
+  <!-- Drive Link -->
+  <?php if (!empty($order['drive_link'])): ?>
+  <div class="mx-4 mb-3 bg-darkcard border border-white/5 rounded-2xl px-4 py-3">
+    <div class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Google Drive / WeTransfer Link</div>
+    <a href="<?= htmlspecialchars($order['drive_link']) ?>" target="_blank" class="text-primary text-sm font-bold hover:underline break-all block mt-1">
+      🔗 Visit Link
+    </a>
   </div>
   <?php endif; ?>
 
@@ -211,6 +222,15 @@ require_once '../includes/photographer_header.php';
     <div class="px-6 py-4 border-t border-white/5 bg-white/2">
       <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Your Note</div>
       <div class="text-zinc-300"><?= htmlspecialchars($order['notes']) ?></div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($order['drive_link'])): ?>
+    <div class="px-6 py-4 border-t border-white/5 bg-white/2">
+      <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Google Drive / WeTransfer Link</div>
+      <a href="<?= htmlspecialchars($order['drive_link']) ?>" target="_blank" class="text-primary text-sm font-bold hover:underline break-all block mt-1">
+        <?= htmlspecialchars($order['drive_link']) ?>
+      </a>
     </div>
     <?php endif; ?>
     <?php if ($order['admin_notes']): ?>

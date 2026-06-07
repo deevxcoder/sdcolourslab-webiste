@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, X, ChevronDown, LogIn, UserPlus, PhoneCall } from "lucide-react";
+import { getBackendUrl } from "@/lib/backend";
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -12,11 +13,6 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const pathname = usePathname();
 
-  const getBackendUrl = (path: string) => {
-    const isDev = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-    const base = isDev ? "http://127.0.0.1:8000" : "https://backend.sdcolourslab.in";
-    return `${base}${path}`;
-  };
 
   useEffect(() => {
     const handleScroll = () => {

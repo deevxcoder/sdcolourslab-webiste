@@ -3,6 +3,7 @@ import Footer from "./components/Footer";
 import ProductCard from "./components/ProductCard";
 import Image from "next/image";
 import Link from "next/link";
+import { getBackendUrl } from "@/lib/backend";
 import {
   Truck,
   Award,
@@ -16,9 +17,21 @@ import {
   Zap,
 } from "lucide-react";
 
-export default function Home() {
-  // 6 Representative featured B2B products
-  const featuredProducts = [
+interface DbProduct {
+  id: number;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  price_alt: number | null;
+  sizes: string[];
+  features: string[];
+  tag: string | null;
+  image: string | null;
+}
+
+async function getFeaturedProducts() {
+  const fallbackProducts = [
     {
       id: 1,
       name: "Leather 2-in-1 Premium Combo Pad",
@@ -28,7 +41,7 @@ export default function Home() {
       sizes: ["12x18", "12x36"],
       features: ["Fine Italian Leather Cover", "Custom Carry Bag Included", "Gold Accented Embossed Bindings"],
       tag: "Best Seller",
-      image: "/images/combos/leather-2in1-bag.jpg",
+      image: null,
     },
     {
       id: 2,
@@ -39,18 +52,18 @@ export default function Home() {
       sizes: ["12x18", "12x24"],
       features: ["Solid Teakwood Finished Cover", "Premium Velvet Lined Storage Box", "All-In-One Display Desk Kit"],
       tag: "Premium",
-      image: "/images/combos/wooden-4in1.jpg",
+      image: null,
     },
     {
       id: 3,
-      name: "Superior Platinum 6-in-1 Royal Set",
+      name: "Superior Royal 4-in-1 Combo Set",
       category: "Combo Photo Pads",
-      description: "Ultra luxurious set comprising full leather cover album, square briefcase box, presentation bag, mini book, LED desk frame, and photo calendar.",
-      price: 3150,
-      sizes: ["12x18", "15x20"],
-      features: ["Handcrafted Dual-Tone Leather", "Plush Presentation Briefcase", "Matching Pocket Mini Book Included"],
+      description: "Leather cover pad, leather bag & box, album size LED frame.",
+      price: 2250,
+      sizes: ["12x18", "12x30"],
+      features: ["Leather Cover Pad", "Leather Bag & Box", "8x12 LED Frame Included"],
       tag: "Royal Choice",
-      image: "/images/combos/superior-platinum-6in1.jpg",
+      image: null,
     },
     {
       id: 4,
@@ -61,31 +74,80 @@ export default function Home() {
       sizes: ["12x18", "12x36"],
       features: ["High Gloss Shatterproof Acrylic", "Ultra HD Matte Print Sheet Pages", "Stitchless Flat lay Binding"],
       tag: "Modern",
-      image: "/images/combos/acrylic-2in1.jpg",
+      image: null,
     },
     {
       id: 5,
-      name: "Ultra HD NTR Velvet Wedding Album",
+      name: "Metallic Album (12x18)",
       category: "Wedding Albums",
-      description: "Non-Tearable Slim sheets layered with premium velvet finishing to produce deep blacks and rich colors.",
-      price: 2160, // based on NTR Heavy Velvet rates
-      sizes: ["12x18", "12x36"],
-      features: ["Velvety Soft Touch Sheets", "Water & Fingerprint Resistant", "Perfect Lay-Flat Presentation"],
-      tag: "Photographers Fav",
-      image: "/images/combos/superior-silver-3in1.jpg",
+      description: "Non-Tearable Slim sheets layered with premium metallic and velvet finishing.",
+      price: 90,
+      sizes: ["12x15", "12x18", "18x24"],
+      features: ["Silky Metallic Finish", "Transparent Sheet Pages", "Deep contrast print technology"],
+      tag: "Premium",
+      image: null,
     },
     {
       id: 6,
-      name: "Acrylic Wall Frame (12x18)",
-      category: "Wall Acrylics & Canvas",
-      description: "High impact wall art printed directly behind 5mm crystal clear acrylic glass with finished polished edges.",
-      price: 750,
-      sizes: ["8x12", "12x18", "24x36"],
-      features: ["Waterproof Back Panel Plates", "Direct Ultra HD UV Flatbed Ink", "Sturdy Wall Mount Studs Included"],
+      name: "8x12 LED Backlit Photo Frame",
+      category: "LED Frames",
+      description: "High impact backlit table display with crystal clear glowing acrylic guard panel.",
+      price: 412,
+      sizes: ["8x12"],
+      features: ["Includes Panel & Adaptor", "Bulk Quantity Discounts Available", "Sturdy Back Stand Plate"],
       tag: "Wall Art",
-      image: "/images/combos/inluxury-proluxury-5in1.jpg",
+      image: null,
     },
   ];
+
+  try {
+    const backendUrl = getBackendUrl("/api/products");
+    const res = await fetch(backendUrl, { cache: "no-store" });
+    if (!res.ok) return fallbackProducts;
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      if (json.data.length === 0) return fallbackProducts;
+      
+      const sorted = [...json.data].sort((a: any, b: any) => {
+        const isACombo = a.category === "combo" ? 1 : 0;
+        const isBCombo = b.category === "combo" ? 1 : 0;
+        if (isACombo !== isBCombo) return isBCombo - isACombo;
+        
+        const hasImgA = a.image ? 1 : 0;
+        const hasImgB = b.image ? 1 : 0;
+        if (hasImgA !== hasImgB) return hasImgB - hasImgA;
+        
+        const hasTagA = a.tag ? 1 : 0;
+        const hasTagB = b.tag ? 1 : 0;
+        if (hasTagA !== hasTagB) return hasTagB - hasTagA;
+        
+        return 0;
+      });
+
+      return sorted.slice(0, 6).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category === "combo" 
+          ? "Combo Photo Pads" 
+          : (p.category === "album" 
+              ? "Wedding Albums" 
+              : (p.category === "led_frame" ? "LED Frames" : "Wall Canvas & Acrylics")),
+        description: p.description || "Premium print product.",
+        price: p.price,
+        sizes: Array.isArray(p.sizes) ? p.sizes : [],
+        features: Array.isArray(p.features) ? p.features : [],
+        tag: p.tag || undefined,
+        image: p.image || null,
+      }));
+    }
+  } catch (err) {
+    console.error("Failed to fetch products for homepage:", err);
+  }
+  return fallbackProducts;
+}
+
+export default async function Home() {
+  const featuredProducts = await getFeaturedProducts();
 
   const categories = [
     {

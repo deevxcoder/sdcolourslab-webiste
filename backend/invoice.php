@@ -34,6 +34,19 @@ $iStmt = $db->prepare("SELECT * FROM order_items WHERE order_id=?");
 $iStmt->execute([$orderId]);
 $items = $iStmt->fetchAll();
 
+// Fetch settings for dynamic contact info
+$settings = [];
+try {
+    $rows = $db->query("SELECT * FROM `settings`")->fetchAll();
+    foreach ($rows as $row) {
+        $settings[$row['key']] = $row['value'];
+    }
+} catch (PDOException $e) { /* fallback if table doesn't exist */ }
+
+$phoneVal = $settings['phone_number'] ?? '8895838987, 8260754410';
+$whatsappVal = $settings['whatsapp_number'] ?? '8895838987';
+$addressVal = $settings['lab_address'] ?? 'Madhusudan marg, Naredi Tower Complex (In front of Raymond showroom) RKL- 769001 (ODISHA)';
+
 // Resolve client details
 $clientName = ($order['photographer_id'] === null) ? $order['manual_studio_name'] : ($order['studio_name'] ?: $order['photographer_name']);
 $clientPhone = ($order['photographer_id'] === null) ? $order['manual_phone'] : $order['photographer_phone'];
@@ -73,7 +86,13 @@ while (count($displayRows) < 10) {
 $subtotal = $order['total'];
 $discountPercent = $order['discount_percent'] ?? 0;
 $discountAmount = $order['discount_amount'] ?? 0;
-$netPay = $order['net_pay'] ?? $subtotal;
+$netPay = ($order['net_pay'] !== null && (float)$order['net_pay'] > 0) ? (float)$order['net_pay'] : $subtotal;
+
+// Resolve Payment Status Label
+$paymentStatus = 'PENDING';
+if (in_array($order['status'], ['paid', 'processing', 'shipped', 'delivered'])) {
+    $paymentStatus = 'PAID';
+}
 
 // WhatsApp Share link compilation
 $invoiceUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
@@ -497,7 +516,7 @@ $waLink = "https://wa.me/" . preg_replace('/[^0-9]/', '', $clientPhone) . "?text
             sdcoloursphotobooklab@gmail.com
           </div>
           <div class="logo-contact">
-            Call : 8895838987, 8260754410
+            Call : <?= htmlspecialchars($phoneVal) ?>
           </div>
         </div>
         <div class="header-reg">
@@ -506,7 +525,7 @@ $waLink = "https://wa.me/" . preg_replace('/[^0-9]/', '', $clientPhone) . "?text
         </div>
       </div>
       <div class="header-address-bar">
-        Madhusudan marg, Naredi Tower Complex (In front of Raymond showroom) RKL- 769001 (ODISHA)
+        <?= htmlspecialchars($addressVal) ?>
       </div>
     </div>
     
@@ -520,6 +539,7 @@ $waLink = "https://wa.me/" . preg_replace('/[^0-9]/', '', $clientPhone) . "?text
       <div class="client-right">
         <div>Date : <?= date('d.m.Y', strtotime($order['created_at'])) ?></div>
         <div>Size : <?= htmlspecialchars($orderSize ?: 'N/A') ?></div>
+        <div>Payment : <span style="color: <?= $paymentStatus === 'PAID' ? '#16a34a' : '#d97706' ?>; font-weight: 900;"><?= $paymentStatus ?></span></div>
       </div>
     </div>
     
@@ -578,11 +598,21 @@ $waLink = "https://wa.me/" . preg_replace('/[^0-9]/', '', $clientPhone) . "?text
     
     <!-- Sign Off Section -->
     <div class="bill-sign-off">
-      <div class="sign-left">
-        <!-- Optional space for Terms/QR/Stamp -->
-        <span style="font-size: 9px; font-weight: 800; display: block; margin-bottom: 2px;">Terms:</span>
-        1. All disputes subject to Rourkela jurisdiction.<br>
-        2. Check layout & prints before dispatch.
+      <div class="sign-left" style="height: auto; min-height: 60px;">
+        <!-- Optional space for Terms/QR/Stamp/Branches -->
+        <span style="font-size: 9px; font-weight: 800; display: block; margin-bottom: 2px;">Terms & Branches:</span>
+        <div style="font-size: 8px; line-height: 1.3;">
+          1. All disputes subject to Rourkela jurisdiction.<br>
+          2. Check layout & prints before dispatch.
+          <?php
+          $branchesDecoded = json_decode($settings['branches'] ?? '[]', true);
+          if (!empty($branchesDecoded)) {
+              foreach ($branchesDecoded as $br) {
+                  echo "<br><strong>" . htmlspecialchars($br['name']) . ":</strong> " . htmlspecialchars($br['address']);
+              }
+          }
+          ?>
+        </div>
       </div>
       <div class="sign-right">
         <div class="authori-label">For: SD Colours PhotoBook Lab</div>

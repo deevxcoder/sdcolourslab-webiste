@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { Download, Calculator, PhoneCall, Plus, Minus, FileText } from "lucide-react";
+import { getBackendUrl } from "@/lib/backend";
 
 type Category = "albums" | "acrylics" | "leds" | "combos";
 
@@ -46,11 +47,6 @@ export default function Pricing() {
   const [selectedComboId, setSelectedComboId] = useState<number | "">("");
   const [comboQty, setComboQty] = useState(1);
 
-  const getBackendUrl = (path: string) => {
-    const isDev = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-    const base = isDev ? "http://127.0.0.1:8000" : "https://backend.sdcolourslab.in";
-    return `${base}${path}`;
-  };
 
   const parseAlbumPapers = (features: string[]): AlbumPaperOption[] => {
     const list: AlbumPaperOption[] = [];
