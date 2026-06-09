@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_cart'])) {
 
         if ($product['category'] === 'album') {
             $paperType = trim($_POST['paper_type'] ?? '');
-            $pageCount = max(20, (int)($_POST['page_count'] ?? 30));
+            $pageCount = max(2, (int)($_POST['page_count'] ?? 30));
             
             // Find the rate for this paper type from the features list
             $features = json_decode($product['features'], true) ?: [];
@@ -353,7 +353,7 @@ require_once '../includes/photographer_header.php';
               <!-- Page Count Input -->
               <div class="flex items-center gap-3 bg-zinc-800 border border-white/10 rounded-xl px-4 py-2.5">
                 <span class="text-zinc-400 text-xs font-semibold whitespace-nowrap">Pages (Sides):</span>
-                <input type="number" name="page_count" value="30" min="20" max="100" step="2"
+                <input type="number" name="page_count" value="30" min="2" max="100" step="2"
                        oninput="updateAlbumCardPrice(this)" onchange="updateAlbumCardPrice(this)"
                        class="w-full bg-transparent text-white font-bold text-sm text-right focus:outline-none" />
               </div>
@@ -558,7 +558,7 @@ require_once '../includes/photographer_header.php';
               <!-- Page Count Input -->
               <div class="flex items-center gap-3 bg-zinc-800 border border-white/10 rounded-xl px-3 py-2">
                 <span class="text-zinc-400 text-xs font-semibold whitespace-nowrap">Pages (Sides):</span>
-                <input type="number" name="page_count" value="30" min="20" max="100" step="2"
+                <input type="number" name="page_count" value="30" min="2" max="100" step="2"
                        oninput="updateAlbumCardPrice(this)" onchange="updateAlbumCardPrice(this)"
                        class="w-full bg-transparent text-white font-bold text-sm text-right focus:outline-none" />
               </div>

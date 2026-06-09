@@ -324,7 +324,7 @@ Please verify my order specs and confirm dispatch time.`;
                         </label>
                         <input
                           type="range"
-                          min="20"
+                          min="2"
                           max="100"
                           step="2"
                           value={albumPages}
@@ -332,7 +332,7 @@ Please verify my order specs and confirm dispatch time.`;
                           className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-primary"
                         />
                         <div className="flex justify-between text-[10px] font-bold text-zinc-400">
-                          <span>Min: 20 Pages</span>
+                          <span>Min: 2 Pages</span>
                           <span>Max: 100 Pages</span>
                         </div>
                       </div>
